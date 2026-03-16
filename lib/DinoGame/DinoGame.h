@@ -1,112 +1,59 @@
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
-// Copyright (c) 2023-2026 Dismo Industries LLC
-
 #ifndef DINOGAME_H
 #define DINOGAME_H
 
-#include <Arduino.h>
-#include "DisplayProxy.h"
-#include "ButtonManager.h"
-#include "DinoSprites.h"
+#include "AppManager.h"
 
-/**
- * DinoGame with:
- * - 3 buttons (jump, duck, reset)
- * - Pixel-perfect collisions
- * - Score
- * - Multiple ground tiles for a scrolling “bumpy” ground
- * - Higher pterodactyl Y => must duck
- * - Random obstacle spacing (with min gap) => multiple on screen
- */
+#define DINO_W 16
+#define DINO_H 16
+#define GROUND_Y 52
+#define MAX_OBSTACLES 3
+#define GRAVITY 0.6f
+#define JUMP_FORCE -8.0f
 
-class DinoGame {
+class DinoGame : public App {
 public:
-    DinoGame(ButtonManager& btnMgr);
-
-    void begin();
-    void end();
-
-    void update();
-    void draw();
-
-    void resetGame();
-    void setSpeedBySlider(float sliderPercentage);
-
-    static void jumpButtonCallback(const ButtonEvent &ev);
-    static void duckButtonCallback(const ButtonEvent &ev);
-    static void resetButtonCallback(const ButtonEvent &ev);
-    static void endButtonCallback(const ButtonEvent &ev);
-
-    static DinoGame* instance;
+    void begin() override;
+    void update() override;
+    void end() override;
 
 private:
-    // Refs
-    DisplayProxy& display;
-    ButtonManager& buttonManager;
-
-    // Button callbacks
-    void registerButtonCallbacks();
-    void unregisterButtonCallbacks();
-
-    // Dino
-    bool  gameOver;
+    // Dino state
     float dinoY;
-    float dinoVelocity;
-    bool  isJumping;
-    bool  isDucking;
-
+    float dinoVelY;
+    bool isJumping;
+    bool isDucking;
+    bool isGameOver;
+    
     // Obstacles
     struct Obstacle {
         float x;
-        bool  isHigh;   // pterodactyl (duck needed) or cactus
-        bool  passed;   // track if we counted it as avoided
+        int width;
+        int height;
+        bool active;
     };
-    static const int MAX_OBSTACLES = 8;
     Obstacle obstacles[MAX_OBSTACLES];
-    int obstacleCount;
-
-    unsigned long obstaclesAvoidedCount;
-
-    // Obstacle spawn timing
-    unsigned long nextSpawnTime;   // when the next obstacle spawns
-    float obstacleSpeed;
-    unsigned long minGapTime;      // minimal time between spawns
-    unsigned long maxGapTime;      // max time between spawns (so we do get obstacles)
-    bool   pterodactylUnlocked;    
-    int    pterodactylUnlockAt;
-
-    // Ground scrolling
-    static const int GROUND_SEGMENTS = 10; // how many 16px wide segments across 128px (plus extras)
-    struct GroundSegment {
-        float x;          // left position
-        int   tileIndex;  // which tile from GroundTiles[]
-    };
-    GroundSegment groundSegs[GROUND_SEGMENTS];
-    float groundScrollSpeed; // typically same or smaller than obstacleSpeed
-
-    void initGround();
-    void updateGround();
-    void drawGround();
-
-    // Timers/logic
-    void handleJump();
-    void handleDuck(ButtonEventType evType);
-    void handleReset();
-    void handleEnd();
-
-    void updateDino();
-    void updateObstacles();
+    
+    // Game state
+    int score;
+    int highScore;
+    float gameSpeed;
+    unsigned long lastUpdate;
+    unsigned long lastObstacle;
+    unsigned long lastScoreInc;
+    int groundOffset;
+    
     void spawnObstacle();
-    void checkCollisions();
-
-    bool pixelCollides(
-        const unsigned char* spriteA, int wA, int hA, int xA, int yA,
-        const unsigned char* spriteB, int wB, int hB, int xB, int yB
-    );
+    void drawDino();
+    void drawObstacles();
+    void drawGround();
+    void drawScore();
+    void drawGameOver();
+    bool checkCollision();
+    void resetGame();
 };
 
-// Declare that there's a global object called below somewhere for AppDefs to use
-// must be after the reference class definition exists
 extern DinoGame dinoGame;
+
+extern DinoGame dinoGameApp;
 
 #endif
